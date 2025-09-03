@@ -1,0 +1,15 @@
+<app-header></app-header>
+<main class="main">
+    <section class="response">
+        <app-response></app-response>
+    </section>
+    <section class="chat">
+        <app-portrait></app-portrait>
+        <app-chat></app-chat>
+    </section>
+</main>
+
+<app-game-end 
+  [isWin]="gameEndState.isWin" 
+  [isVisible]="gameEndState.isVisible">
+</app-game-end>

@@ -1,0 +1,33 @@
+<div *ngIf="gameSession.positiveAnswers.length > 0 || gameSession.negativeAnswers.length > 0" class="history-container">
+    <h3 class="history-title">For now:</h3>
+    
+    <div class="history-table">
+        <div class="history-column positive">
+            <div class="column-header">
+                ✅ I am:
+            </div>
+            <div class="answers-list">
+                <div *ngFor="let answer of gameSession.positiveAnswers" class="answer-item positive-item">
+                    {{ answer }}
+                </div>
+                <div *ngIf="gameSession.positiveAnswers.length === 0" class="empty-state">
+                    No positive answers yet...
+                </div>
+            </div>
+        </div>
+        
+        <div class="history-column negative">
+            <div class="column-header">
+                ❌ I am not:
+            </div>
+            <div class="answers-list">
+                <div *ngFor="let answer of gameSession.negativeAnswers" class="answer-item negative-item">
+                    {{ answer }}
+                </div>
+                <div *ngIf="gameSession.negativeAnswers.length === 0" class="empty-state">
+                    No negative answers yet...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

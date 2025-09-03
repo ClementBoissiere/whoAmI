@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8081:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+    labels:
+      - "project=whoami"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "4201:4200"
+    depends_on:
+      - backend
+    labels:
+      - "project=whoami"

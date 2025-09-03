@@ -1,0 +1,16 @@
+.main {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    max-width: 100%;
+}
+
+.chat {
+    width: 55%
+}
+
+.response {
+    width: 45%;
+}
+
+/* Debug styles removed for production */

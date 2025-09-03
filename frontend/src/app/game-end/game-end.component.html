@@ -1,0 +1,13 @@
+<div *ngIf="isVisible" class="game-end-overlay">
+  <div class="game-end-content">
+    <div class="main-text win-text" *ngIf="isWin">
+      <span class="you">YOU</span>
+      <span class="win">WIN!</span>
+    </div>
+    
+    <div class="main-text lose-text" *ngIf="!isWin">
+      <span class="game">GAME</span>
+      <span class="over">OVER</span>
+    </div>
+  </div>
+</div>

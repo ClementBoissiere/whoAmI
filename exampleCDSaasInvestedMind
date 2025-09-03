@@ -1,0 +1,335 @@
+# .github/workflows/deploy-prod.yml
+name: 🚀 CD - Production Deployment
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Déploiement manuel
+
+jobs:
+  deploy:
+    name: 🌐 Deploy to Production
+    runs-on: ubuntu-latest
+    # ✅ Protection via branch rules et status checks GitHub
+
+    environment: production # Protection branch
+
+    # ⚠️ Attendre que la CI frontend soit passée AVANT de déployer
+    needs: []  # Sera rempli si la CI frontend a tourné
+
+    steps:
+      - name: 📦 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'investedMind_Front/package-lock.json'
+
+      - name: 📥 Try to restore frontend build from cache
+        uses: actions/cache@v4
+        id: frontend-cache
+        with:
+          path: investedMind_Front/dist
+          key: frontend-build-${{ github.sha }}
+        continue-on-error: true
+
+      - name: 📦 Create frontend build archive
+        run: |
+          if [ "${{ steps.frontend-cache.outputs.cache-hit }}" = "true" ]; then
+            echo "✅ Using cached frontend build from CI"
+            tar -czf frontend-build.tar.gz -C investedMind_Front/dist/invested-mind .
+          else
+            echo "⚠️ No cache found, building locally..."
+            cd investedMind_Front
+            npm ci
+            npm run build
+            tar -czf ../frontend-build.tar.gz -C dist/invested-mind .
+          fi
+
+      - name: 🔧 Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 📁 Create env directory on server
+        run: |
+          ssh -p 2221 -o StrictHostKeyChecking=no ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} '
+            mkdir -p ~/projets/investedmind/env
+          '
+
+      - name: 🔐 Create production secrets file
+        run: |
+          ssh -p 2221 -o StrictHostKeyChecking=no ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} '
+            cat > ~/projets/investedmind/.env << EOF
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          LEMON_SQUEEZY_API_KEY=${{ secrets.LEMON_SQUEEZY_API_KEY }}
+          LEMON_SQUEEZY_WEBHOOK_SECRET=${{ secrets.LEMON_SQUEEZY_WEBHOOK_SECRET }}
+          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+          RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+          BETTER_AUTH_SECRET=${{ secrets.BETTER_AUTH_SECRET }}
+          FMP_API_KEY=${{ secrets.FMP_API_KEY }}
+          EOF
+          chmod 600 ~/projets/investedmind/.env
+          '
+
+      - name: 📤 Upload code to server
+        run: |
+          rsync -avz --delete -e "ssh -p 2221" \
+            --exclude '.git' \
+            --exclude 'node_modules' \
+            --exclude '.env' \
+            --exclude 'env/' \
+            ./ ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }}:~/projets/investedmind/
+
+      - name: 📤 Upload frontend build
+        run: |
+          scp -P 2221 frontend-build.tar.gz ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }}:~/projets/investedmind/
+
+
+      - name: 💾 Backup current images
+        run: |
+          ssh -p 2221 -o StrictHostKeyChecking=no ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} '
+            cd ~/projets/investedmind
+
+            # Créer un timestamp unique pour ce déploiement
+            BACKUP_TAG="backup-$(date +%Y%m%d-%H%M%S)"
+            echo "Creating backup with tag: $BACKUP_TAG"
+
+            # Backup des images existantes (si elles existent)
+            if docker image ls | grep -q "investedmind_backend"; then
+              docker tag investedmind_backend "investedmind_backend:$BACKUP_TAG"
+              echo "✅ Backend image backed up"
+            fi
+
+            if docker image ls | grep -q "investedmind_dataprocessor"; then
+              docker tag investedmind_dataprocessor "investedmind_dataprocessor:$BACKUP_TAG"
+              echo "✅ DataProcessor image backed up"
+            fi
+
+
+            # Sauvegarder le tag pour le rollback
+            echo "$BACKUP_TAG" > /tmp/investedmind_backup_tag
+          '
+
+      - name: 🏗️ Deploy application
+        id: deploy
+        run: |
+          ssh -p 2221 -o StrictHostKeyChecking=no ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} '
+            cd ~/projets/investedmind
+
+            echo "🛑 Stopping existing services..."
+            docker-compose -f docker-compose.prod.yml down
+
+            echo "🏗️ Building and starting services..."
+            if ! docker-compose -f docker-compose.prod.yml up -d --build; then
+              echo "❌ Build failed!"
+              exit 1
+            fi
+
+            echo "🚀 Deploying frontend to Nginx..."
+            sudo mkdir -p /var/www/investedmind/html
+            cd ~/projets/investedmind
+
+            echo "🔍 Debug: Frontend archive exists?"
+            ls -la frontend-build.tar.gz || echo "❌ No frontend archive found!"
+
+            echo "🔍 Debug: Archive content preview:"
+            tar -tzf frontend-build.tar.gz | head -10 || echo "❌ Cannot read archive!"
+
+            if [ -f "frontend-build.tar.gz" ]; then
+              echo "📦 Extracting frontend..."
+              mkdir -p /tmp/frontend-extract
+              tar -xzf frontend-build.tar.gz -C /tmp/frontend-extract/
+
+              echo "🔍 Debug: Extracted files:"
+              ls -la /tmp/frontend-extract/
+
+              echo "📁 Copying to web directory..."
+              # Vider le dossier avant déploiement
+              sudo rm -rf /var/www/investedmind/html/*
+
+              # Angular moderne : fichiers dans browser/
+              if [ -d "/tmp/frontend-extract/browser" ]; then
+                echo "🔧 Angular modern build detected - extracting from browser/"
+                sudo cp -r /tmp/frontend-extract/browser/* /var/www/investedmind/html/
+              else
+                echo "🔧 Legacy Angular build - copying directly"
+                sudo cp -r /tmp/frontend-extract/* /var/www/investedmind/html/
+              fi
+
+              sudo chown -R www-data:www-data /var/www/investedmind/html/
+              sudo chmod -R 755 /var/www/investedmind/html/
+
+              echo "✅ Frontend deployed. Final check:"
+              sudo ls -la /var/www/investedmind/html/
+
+              rm -rf /tmp/frontend-extract
+              rm -f frontend-build.tar.gz
+            else
+              echo "❌ No frontend build found - creating placeholder"
+              echo "<h1>InvestedMind - Deployment Error</h1><p>Frontend build not found</p>" | sudo tee /var/www/investedmind/html/index.html
+              sudo chown -R www-data:www-data /var/www/investedmind/html/
+            fi
+
+            cd ~/projets/investedmind
+
+            echo "⏳ Waiting for services to be ready..."
+            sleep 45
+
+            echo "🩺 Health checks..."
+            docker-compose -f docker-compose.prod.yml ps
+          '
+
+      - name: 🔍 Verify deployment with automatic rollback
+        run: |
+          ssh -p 2221 -o StrictHostKeyChecking=no ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} '
+            cd ~/projets/investedmind
+
+            ROLLBACK_NEEDED=false
+            BACKUP_TAG=$(cat /tmp/investedmind_backup_tag 2>/dev/null || echo "")
+
+            echo "🔍 Running deployment verification..."
+
+            # Test 1: Vérifier que tous les services sont up et healthy
+            echo "Test 1: Services status..."
+            if ! docker-compose -f docker-compose.prod.yml ps | grep -E "(healthy|Up)" > /dev/null; then
+              echo "❌ Some services are not running properly"
+              ROLLBACK_NEEDED=true
+            else
+              echo "✅ All services are running"
+            fi
+
+            # Test 2: Health check de l API backend (direct sur port 3000)
+            echo "Test 2: Backend API health..."
+            for i in {1..5}; do
+              if curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
+                echo "✅ Backend API is healthy"
+                break
+              elif [ $i -eq 5 ]; then
+                echo "❌ Backend API health check failed after 5 attempts"
+                ROLLBACK_NEEDED=true
+              else
+                echo "⏳ Attempt $i/5 failed, retrying in 10s..."
+                sleep 10
+              fi
+            done
+
+            # Test 3: Vérifier que le DataProcessor fonctionne
+            echo "Test 3: DataProcessor status..."
+            if ! docker-compose -f docker-compose.prod.yml ps dataprocessor | grep -q "Up"; then
+              echo "❌ DataProcessor is not running"
+              ROLLBACK_NEEDED=true
+            else
+              echo "✅ DataProcessor is running"
+            fi
+
+            # Test 4: Vérifier que Nginx système sert le frontend
+            echo "Test 4: Frontend via Nginx..."
+            echo "🔍 Debug: Checking Nginx status..."
+            sudo systemctl status nginx --no-pager -l || true
+            echo "🔍 Debug: Testing local nginx..."
+            curl -I http://localhost || true
+            echo "🔍 Debug: Testing domain..."
+            curl -I https://investedmind.com || true
+
+            if ! curl -f https://investedmind.com > /dev/null 2>&1; then
+              echo "❌ Frontend not accessible via Nginx"
+              echo "🔍 Nginx error logs:"
+              sudo tail -10 /var/log/nginx/error.log || true
+              ROLLBACK_NEEDED=true
+            else
+              echo "✅ Frontend accessible via Nginx"
+            fi
+
+            # 🔙 ROLLBACK SI NÉCESSAIRE
+            if [ "$ROLLBACK_NEEDED" = true ]; then
+              echo "🚨 ROLLBACK TRIGGERED - Deployment failed verification"
+
+              if [ -n "$BACKUP_TAG" ]; then
+                echo "🔄 Rolling back to previous version ($BACKUP_TAG)..."
+
+                # Arrêter les services défaillants
+                docker-compose -f docker-compose.prod.yml down
+
+                # Restaurer les images de backup
+                if docker image ls | grep -q "investedmind_backend:$BACKUP_TAG"; then
+                  docker tag "investedmind_backend:$BACKUP_TAG" investedmind_backend
+                  echo "✅ Backend image restored"
+                fi
+
+                if docker image ls | grep -q "investedmind_dataprocessor:$BACKUP_TAG"; then
+                  docker tag "investedmind_dataprocessor:$BACKUP_TAG" investedmind_dataprocessor
+                  echo "✅ DataProcessor image restored"
+                fi
+
+
+                # Redémarrer avec les anciennes images
+                docker-compose -f docker-compose.prod.yml up -d
+
+                # Vérifier que le rollback fonctionne (test direct backend)
+                sleep 30
+                if curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
+                  echo "✅ Rollback successful - Previous version restored"
+                else
+                  echo "❌ Rollback failed - Manual intervention required"
+                fi
+              else
+                echo "❌ No backup available - Manual intervention required"
+              fi
+
+              exit 1
+            else
+              echo "🎉 Deployment successful - All tests passed!"
+            fi
+          '
+
+      - name: 🧹 Cleanup old InvestedMind images only
+        if: success()
+        run: |
+          ssh -p 2221 -o StrictHostKeyChecking=no ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} '
+            echo "🧹 Cleaning up old InvestedMind images..."
+
+            # Nettoyer seulement les images backup de plus de 7 jours
+            docker images --format "table {{.Repository}}:{{.Tag}}\t{{.CreatedAt}}" | \
+            grep "investedmind.*backup-" | \
+            awk '\''$2 ~ /[0-9]{8}-[0-9]{6}/ {
+              cmd = "date -d \"7 days ago\" +%Y%m%d"
+              cmd | getline cutoff
+              close(cmd)
+              split($2, date_parts, "-")
+              if (date_parts[1] < cutoff) {
+                print $1
+              }
+            }'\'' | \
+            xargs -r docker rmi
+
+            # Nettoyer les images danglings avec le label investedmind
+            docker image prune -f --filter "label=project=investedmind"
+
+            # Nettoyer les containers arrêtés du projet
+            docker container prune -f --filter "label=project=investedmind"
+
+            echo "✅ Cleanup completed - Only InvestedMind resources cleaned"
+          '
+
+      - name: 📊 Deployment Summary
+        if: success()
+        run: |
+          ssh -p 2221 -o StrictHostKeyChecking=no ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} '
+            cd ~/projets/investedmind
+
+            echo "📊 DEPLOYMENT SUMMARY"
+            echo "===================="
+            echo "✅ Commit: ${{ github.sha }}"
+            echo "✅ Timestamp: $(date)"
+            echo "✅ All services status:"
+            docker-compose -f docker-compose.prod.yml ps
+
+            echo ""
+            echo "🔗 Health checks:"
+            curl -s http://localhost:3000/api/health || echo "❌ Backend health check failed"
+            curl -s https://investedmind.com/api/health || echo "❌ Frontend proxy health check failed"
+          '

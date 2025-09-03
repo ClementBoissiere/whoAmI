@@ -1,0 +1,16 @@
+@if (!isWin) {
+    <section class="help">
+        <p>Rules : <br><br>
+            Guess the personality of the day! <br>
+            Our AI will only respond with "Yes" or "No." Be careful though, it's just an GenAI and might not always give the right answers!
+        </p>
+    </section>
+  <app-history></app-history>
+} @else {
+    <section class="responseWiki">
+<div>
+    <h1>{{ personality }}</h1>
+    <p>{{ introduction }}</p>
+</div>
+    </section>
+}

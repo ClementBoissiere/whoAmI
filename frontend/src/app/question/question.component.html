@@ -1,0 +1,43 @@
+<!-- Life Bar -->
+<div class="life-bar-container">
+    <div class="life-bar-label">Questions restantes: {{ gameSession.questionsRemaining }}/20</div>
+    <div class="life-bar">
+        <div class="life-bar-fill" 
+             [style.width.%]="(gameSession.questionsRemaining / 20) * 100"
+             [style.background]="lifeBarColor"></div>
+    </div>
+</div>
+
+<!-- Cooldown indicator -->
+<div *ngIf="cooldownRemaining > 0" class="cooldown-message">
+    ⏳ Attendez {{ cooldownRemaining }} seconde(s)...
+</div>
+
+<form [formGroup]="chatForm" class="chatBox">
+    <div class="input-container">
+        <input class="inputText"
+               id="name"
+               type="text"
+               placeholder="Questions ?"
+               formControlName="chatQuestion"
+               (keydown.enter)="sendMessage()"
+               [class.error]="isMessageTooLong"
+               [disabled]="isLoading || !localStorageService.canAskQuestion()">
+
+        <div class="char-counter" [class.warning]="remainingChars < 20" [class.error]="isMessageTooLong">
+            {{ currentLength }}/200
+        </div>
+    </div>
+
+    <button class="submit"
+            type="submit"
+            (click)="sendMessage()"
+            [disabled]="!chatForm.valid || isLoading || !localStorageService.canAskQuestion()">
+        <img *ngIf="isLoading" src="../../assets/icons/robot_24dp.svg" alt="Robot qui réfléchit..." class="loading-robot">
+        <img *ngIf="!isLoading" src="../../assets/icons/send_24dp.svg" alt="Envoyer">
+    </button>
+</form>
+
+<div *ngIf="errorMessage" class="error-message">
+    {{ errorMessage }}
+</div>

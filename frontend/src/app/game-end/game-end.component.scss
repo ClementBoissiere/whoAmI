@@ -1,0 +1,113 @@
+.game-end-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: transparent;
+}
+
+.game-end-content {
+  text-align: center;
+  position: relative;
+  z-index: 10;
+}
+
+.main-text {
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+  font-weight: bold;
+  text-transform: uppercase;
+  line-height: 0.8;
+  margin-bottom: 1rem;
+}
+
+.main-text.win-text {
+  animation: slideFromTop 2s ease-out forwards;
+}
+
+.main-text.lose-text {
+  animation: slideFromBottom 2s ease-out forwards;
+}
+
+.you, .game {
+  display: block;
+  font-size: clamp(2rem, 8vw, 4rem);
+  color: #FEAE6F;
+  text-shadow: 
+    2px 2px 4px rgba(0,0,0,0.3),
+    0 0 15px #FEAE6F;
+}
+
+.win {
+  display: block;
+  font-size: clamp(2.5rem, 10vw, 5rem);
+  color: #4CAF50;
+  text-shadow: 
+    2px 2px 4px rgba(0,0,0,0.3),
+    0 0 15px #4CAF50;
+  animation: glow 1s ease-in-out infinite alternate;
+}
+
+.over {
+  display: block;
+  font-size: clamp(2.5rem, 10vw, 5rem);
+  color: #F44336;
+  text-shadow: 
+    2px 2px 4px rgba(0,0,0,0.3),
+    0 0 15px #F44336;
+  animation: glow 1s ease-in-out infinite alternate;
+}
+
+/* Removed unused styles for cleaner component */
+
+/* Animations */
+@keyframes slideFromTop {
+  0% { 
+    transform: translateY(-200px);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% { 
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideFromBottom {
+  0% { 
+    transform: translateY(200px);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% { 
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* fadeOut removed - permanent display now */
+
+@keyframes glow {
+  from { 
+    text-shadow: 
+      2px 2px 4px rgba(0,0,0,0.3),
+      0 0 15px currentColor; 
+  }
+  to { 
+    text-shadow: 
+      2px 2px 4px rgba(0,0,0,0.3),
+      0 0 25px currentColor,
+      0 0 35px currentColor; 
+  }
+}
+
+/* Removed unused animations */

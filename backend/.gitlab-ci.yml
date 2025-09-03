@@ -1,0 +1,22 @@
+stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  image: maven:3.9.4-amazoncorretto-21
+  script:
+    - mvn clean package
+  artifacts:
+    paths:
+      - target/*.jar
+
+deploy:
+  stage: deploy
+  image: mcr.microsoft.com/azure-cli
+  script:
+    - az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
+    - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+    - az webapp deploy --resource-group "$AZURE_RG" --name "$AZURE_WEBAPP_NAME" --src-path target/*.jar
+  only:
+    - main
