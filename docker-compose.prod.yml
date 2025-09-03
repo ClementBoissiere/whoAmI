@@ -25,7 +25,13 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    expose:
-      - "80"
+    ports:
+      - "8081:80"   # mappe le port 80 du container sur le port 8081 du VPS
     labels:
       - "project=whoami"
+    healthcheck:      # ajoute un healthcheck simple
+      test: ["CMD", "curl", "-f", "http://localhost/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
