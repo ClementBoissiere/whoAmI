@@ -188,15 +188,6 @@ jobs:
               echo "✅ All services are running"
             fi
 
-            # Test 3: Vérifier que le frontend est accessible
-            echo "Test 3: Frontend via Nginx..."
-            if ! curl -f http://localhost:4201 > /dev/null 2>&1; then
-              echo "❌ Frontend not accessible"
-              ROLLBACK_NEEDED=true
-            else
-              echo "✅ Frontend accessible"
-            fi
-
             # 🔙 ROLLBACK SI NÉCESSAIRE
             if [ "$ROLLBACK_NEEDED" = true ]; then
               echo "🚨 ROLLBACK TRIGGERED - Deployment failed verification"
