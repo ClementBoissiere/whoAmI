@@ -37,9 +37,16 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: 🔍 Debug files
+        run: |
+          pwd
+          ls -la
+
       - name: 🏗️ Build backend JAR
         run: |
           cd backend
+          pwd
+          ls -la
           ./mvnw clean package -DskipTests
           ls -la target/
 
