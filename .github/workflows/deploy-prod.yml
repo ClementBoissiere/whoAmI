@@ -117,6 +117,7 @@ jobs:
         id: deploy
         run: |
           ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} '
+            set -x
             cd ~/projets/whoami
 
             echo "🛑 Stopping existing services..."
