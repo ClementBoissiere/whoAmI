@@ -16,9 +16,6 @@ services:
   frontend:
     build: ./frontend
     restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
     ports:
       - "8081:80"   # mappe le port 80 du container sur le port 8081 du VPS
     labels:
