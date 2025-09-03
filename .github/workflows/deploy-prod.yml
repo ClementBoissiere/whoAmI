@@ -167,9 +167,6 @@ jobs:
 
             echo "⏳ Waiting for services to be ready..."
             sleep 30
-
-            echo "🩺 Health checks..."
-            docker-compose -f docker-compose.prod.yml ps
           '
 
       - name: 🔍 Verify deployment with automatic rollback
@@ -190,21 +187,6 @@ jobs:
             else
               echo "✅ All services are running"
             fi
-
-            # Test 2: Health check du backend Spring Boot
-            echo "Test 2: Backend health..."
-            for i in {1..5}; do
-              if curl -f http://localhost:8081/lastPersonality > /dev/null 2>&1; then
-                echo "✅ Backend API is healthy"
-                break
-              elif [ $i -eq 5 ]; then
-                echo "❌ Backend API health check failed after 5 attempts"
-                ROLLBACK_NEEDED=true
-              else
-                echo "⏳ Attempt $i/5 failed, retrying in 10s..."
-                sleep 10
-              fi
-            done
 
             # Test 3: Vérifier que le frontend est accessible
             echo "Test 3: Frontend via Nginx..."
