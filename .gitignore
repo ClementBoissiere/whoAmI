@@ -2,7 +2,6 @@
 
 # Backend (Java/Maven)
 backend/target/
-backend/.mvn/
 backend/*.jar
 backend/*.war
 backend/*.nar
