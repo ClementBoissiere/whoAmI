@@ -1,0 +1,294 @@
+# .github/workflows/deploy-prod.yml
+name: 🎮 CD - WhoAmI Production Deployment
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Déploiement manuel
+
+jobs:
+  deploy:
+    name: 🌐 Deploy to Production
+    runs-on: ubuntu-latest
+    
+    environment: production # Protection branch
+
+    steps:
+      - name: 📦 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: 🏗️ Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+          tar -czf ../frontend-build.tar.gz -C dist .
+
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: 🏗️ Build backend JAR
+        run: |
+          cd backend
+          ./mvnw clean package -DskipTests
+          ls -la target/
+
+      - name: 🔧 Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 📁 Create project directory on server
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} '
+            mkdir -p ~/projets/whoami
+          '
+
+      - name: 🔐 Create production environment file
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} '
+            cat > ~/projets/whoami/.env << EOF
+          MISTRAL_API_KEY=${{ secrets.MISTRAL_API_KEY }}
+          SPRING_PROFILES_ACTIVE=prod
+          EOF
+          chmod 600 ~/projets/whoami/.env
+          '
+
+      - name: 📤 Upload code to server
+        run: |
+          rsync -avz --delete -e "ssh -p ${{ secrets.SSH_PORT }}" \
+            --exclude '.git' \
+            --exclude 'frontend/node_modules' \
+            --exclude 'frontend/dist' \
+            --exclude 'backend/target' \
+            --exclude '.env' \
+            ./ ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }}:~/projets/whoami/
+
+      - name: 📤 Upload frontend build
+        run: |
+          scp -P ${{ secrets.SSH_PORT }} frontend-build.tar.gz ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }}:~/projets/whoami/
+
+      - name: 📤 Upload backend JAR
+        run: |
+          scp -P ${{ secrets.SSH_PORT }} backend/target/whoamI-0.0.1-SNAPSHOT.jar ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }}:~/projets/whoami/
+
+      - name: 💾 Backup current images
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} '
+            cd ~/projets/whoami
+
+            # Créer un timestamp unique pour ce déploiement
+            BACKUP_TAG="backup-$(date +%Y%m%d-%H%M%S)"
+            echo "Creating backup with tag: $BACKUP_TAG"
+
+            # Backup des images existantes (si elles existent)
+            if docker image ls | grep -q "whoami_backend"; then
+              docker tag whoami_backend "whoami_backend:$BACKUP_TAG"
+              echo "✅ Backend image backed up"
+            fi
+
+            if docker image ls | grep -q "whoami_frontend"; then
+              docker tag whoami_frontend "whoami_frontend:$BACKUP_TAG"
+              echo "✅ Frontend image backed up"
+            fi
+
+            # Sauvegarder le tag pour le rollback
+            echo "$BACKUP_TAG" > /tmp/whoami_backup_tag
+          '
+
+      - name: 🏗️ Deploy application
+        id: deploy
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} '
+            cd ~/projets/whoami
+
+            echo "🛑 Stopping existing services..."
+            docker-compose -f docker-compose.prod.yml down || true
+
+            echo "🏗️ Building and starting services..."
+            if ! docker-compose -f docker-compose.prod.yml up -d --build; then
+              echo "❌ Build failed!"
+              exit 1
+            fi
+
+            echo "🚀 Deploying frontend to Nginx..."
+            sudo mkdir -p /var/www/whoami/html
+            cd ~/projets/whoami
+
+            if [ -f "frontend-build.tar.gz" ]; then
+              echo "📦 Extracting frontend..."
+              mkdir -p /tmp/frontend-extract
+              tar -xzf frontend-build.tar.gz -C /tmp/frontend-extract/
+
+              echo "📁 Copying to web directory..."
+              # Vider le dossier avant déploiement
+              sudo rm -rf /var/www/whoami/html/*
+
+              # Angular moderne : fichiers dans browser/
+              if [ -d "/tmp/frontend-extract/browser" ]; then
+                echo "🔧 Angular modern build detected - extracting from browser/"
+                sudo cp -r /tmp/frontend-extract/browser/* /var/www/whoami/html/
+              else
+                echo "🔧 Legacy Angular build - copying directly"
+                sudo cp -r /tmp/frontend-extract/* /var/www/whoami/html/
+              fi
+
+              sudo chown -R www-data:www-data /var/www/whoami/html/
+              sudo chmod -R 755 /var/www/whoami/html/
+
+              echo "✅ Frontend deployed. Final check:"
+              sudo ls -la /var/www/whoami/html/
+
+              rm -rf /tmp/frontend-extract
+              rm -f frontend-build.tar.gz
+            else
+              echo "❌ No frontend build found - creating placeholder"
+              echo "<h1>WhoAmI - Deployment Error</h1><p>Frontend build not found</p>" | sudo tee /var/www/whoami/html/index.html
+              sudo chown -R www-data:www-data /var/www/whoami/html/
+            fi
+
+            echo "⏳ Waiting for services to be ready..."
+            sleep 30
+
+            echo "🩺 Health checks..."
+            docker-compose -f docker-compose.prod.yml ps
+          '
+
+      - name: 🔍 Verify deployment with automatic rollback
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} '
+            cd ~/projets/whoami
+
+            ROLLBACK_NEEDED=false
+            BACKUP_TAG=$(cat /tmp/whoami_backup_tag 2>/dev/null || echo "")
+
+            echo "🔍 Running deployment verification..."
+
+            # Test 1: Vérifier que tous les services sont up
+            echo "Test 1: Services status..."
+            if ! docker-compose -f docker-compose.prod.yml ps | grep -E "(healthy|Up)" > /dev/null; then
+              echo "❌ Some services are not running properly"
+              ROLLBACK_NEEDED=true
+            else
+              echo "✅ All services are running"
+            fi
+
+            # Test 2: Health check du backend Spring Boot
+            echo "Test 2: Backend health..."
+            for i in {1..5}; do
+              if curl -f http://localhost:8081/lastPersonality > /dev/null 2>&1; then
+                echo "✅ Backend API is healthy"
+                break
+              elif [ $i -eq 5 ]; then
+                echo "❌ Backend API health check failed after 5 attempts"
+                ROLLBACK_NEEDED=true
+              else
+                echo "⏳ Attempt $i/5 failed, retrying in 10s..."
+                sleep 10
+              fi
+            done
+
+            # Test 3: Vérifier que le frontend est accessible
+            echo "Test 3: Frontend via Nginx..."
+            if ! curl -f http://localhost:4201 > /dev/null 2>&1; then
+              echo "❌ Frontend not accessible"
+              ROLLBACK_NEEDED=true
+            else
+              echo "✅ Frontend accessible"
+            fi
+
+            # 🔙 ROLLBACK SI NÉCESSAIRE
+            if [ "$ROLLBACK_NEEDED" = true ]; then
+              echo "🚨 ROLLBACK TRIGGERED - Deployment failed verification"
+
+              if [ -n "$BACKUP_TAG" ]; then
+                echo "🔄 Rolling back to previous version ($BACKUP_TAG)..."
+
+                # Arrêter les services défaillants
+                docker-compose -f docker-compose.prod.yml down
+
+                # Restaurer les images de backup
+                if docker image ls | grep -q "whoami_backend:$BACKUP_TAG"; then
+                  docker tag "whoami_backend:$BACKUP_TAG" whoami_backend
+                  echo "✅ Backend image restored"
+                fi
+
+                if docker image ls | grep -q "whoami_frontend:$BACKUP_TAG"; then
+                  docker tag "whoami_frontend:$BACKUP_TAG" whoami_frontend
+                  echo "✅ Frontend image restored"
+                fi
+
+                # Redémarrer avec les anciennes images
+                docker-compose -f docker-compose.prod.yml up -d
+
+                # Vérifier que le rollback fonctionne
+                sleep 30
+                if curl -f http://localhost:8081/lastPersonality > /dev/null 2>&1; then
+                  echo "✅ Rollback successful - Previous version restored"
+                else
+                  echo "❌ Rollback failed - Manual intervention required"
+                fi
+              else
+                echo "❌ No backup available - Manual intervention required"
+              fi
+
+              exit 1
+            else
+              echo "🎉 Deployment successful - All tests passed!"
+            fi
+          '
+
+      - name: 🧹 Cleanup old images
+        if: success()
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} '
+            echo "🧹 Cleaning up old WhoAmI images..."
+
+            # Nettoyer seulement les images backup de plus de 7 jours
+            docker images --format "table {{.Repository}}:{{.Tag}}\t{{.CreatedAt}}" | \
+            grep "whoami.*backup-" | \
+            awk '"'"'$2 ~ /[0-9]{8}-[0-9]{6}/ {
+              cmd = "date -d \"7 days ago\" +%Y%m%d"
+              cmd | getline cutoff
+              close(cmd)
+              split($2, date_parts, "-")
+              if (date_parts[1] < cutoff) {
+                print $1
+              }
+            }'"'"' | \
+            xargs -r docker rmi
+
+            # Nettoyer les images danglings avec le label whoami
+            docker image prune -f --filter "label=project=whoami"
+
+            echo "✅ Cleanup completed"
+          '
+
+      - name: 📊 Deployment Summary
+        if: success()
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} '
+            cd ~/projets/whoami
+
+            echo "📊 DEPLOYMENT SUMMARY"
+            echo "===================="
+            echo "✅ Commit: ${{ github.sha }}"
+            echo "✅ Timestamp: $(date)"
+            echo "✅ All services status:"
+            docker-compose -f docker-compose.prod.yml ps
+
+            echo ""
+            echo "🔗 Health checks:"
+            curl -s http://localhost:8081/lastPersonality || echo "❌ Backend health check failed"
+            echo "🎮 WhoAmI game deployed successfully!"
+          '
