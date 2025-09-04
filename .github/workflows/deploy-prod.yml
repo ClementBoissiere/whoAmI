@@ -29,7 +29,14 @@ jobs:
           cd frontend
           npm ci
           npm run build
-          tar -czf ../frontend-build.tar.gz -C dist .
+          # Angular moderne : extraire depuis browser/ si présent
+          if [ -d "dist/whoami/browser" ]; then
+            echo "🔧 Angular modern build - packaging from browser/"
+            tar -czf ../frontend-build.tar.gz -C dist/whoami/browser .
+          else
+            echo "🔧 Legacy build - packaging from dist/"
+            tar -czf ../frontend-build.tar.gz -C dist .
+          fi
 
       - name: ☕ Setup Java
         uses: actions/setup-java@v4
