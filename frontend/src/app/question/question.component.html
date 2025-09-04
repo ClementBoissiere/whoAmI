@@ -1,6 +1,11 @@
 <!-- Life Bar -->
 <div class="life-bar-container">
-    <div class="life-bar-label">Questions restantes: {{ gameSession.questionsRemaining }}/20</div>
+    <div class="life-bar-header">
+        <div class="life-bar-label">Questions restantes: {{ gameSession.questionsRemaining }}/20</div>
+        <button class="history-btn mobile-only" (click)="openHistoryPanel()">
+            📋
+        </button>
+    </div>
     <div class="life-bar">
         <div class="life-bar-fill"
              [style.width.%]="(gameSession.questionsRemaining / 20) * 100"
@@ -41,3 +46,9 @@
 <div *ngIf="errorMessage" class="error-message">
     {{ errorMessage }}
 </div>
+
+<!-- Slide History Panel (mobile only) -->
+<app-slide-history 
+    [isOpen]="isHistoryPanelOpen"
+    (closePanel)="closeHistoryPanel()">
+</app-slide-history>

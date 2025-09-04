@@ -1,0 +1,13 @@
+<div class="slide-panel-overlay" 
+     [class.open]="isOpen" 
+     (click)="onBackdropClick($event)">
+  <div class="slide-panel" [class.open]="isOpen">
+    <div class="panel-header">
+      <h3>📋 For now:</h3>
+      <button class="close-btn" (click)="onClose()">✕</button>
+    </div>
+    <div class="panel-content">
+      <app-history></app-history>
+    </div>
+  </div>
+</div>

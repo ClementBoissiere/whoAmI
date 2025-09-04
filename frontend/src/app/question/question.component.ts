@@ -6,11 +6,12 @@ import { QuestionResponse, GameSession } from './question.model';
 import { ChatService } from './question.service';
 import { ResponseService } from '../response/response.service';
 import { CommonModule } from '@angular/common';
+import { SlideHistoryComponent } from '../slide-history/slide-history.component';
 
 @Component({
   selector: 'app-question',
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule],
+  imports: [ReactiveFormsModule, CommonModule, SlideHistoryComponent],
   templateUrl: './question.component.html',
   styleUrl: './question.component.scss'
 })
@@ -35,6 +36,7 @@ export class QuestionComponent implements OnInit, OnDestroy {
   };
   cooldownRemaining = 0;
   private cooldownSubscription?: Subscription;
+  isHistoryPanelOpen = false;
 
   private chatService: ChatService = inject(ChatService);
   private responseService: ResponseService = inject(ResponseService);
@@ -158,5 +160,13 @@ export class QuestionComponent implements OnInit, OnDestroy {
     } else {
       return 'linear-gradient(90deg, #28a745, #20c997)'; // Vert
     }
+  }
+
+  openHistoryPanel(): void {
+    this.isHistoryPanelOpen = true;
+  }
+
+  closeHistoryPanel(): void {
+    this.isHistoryPanelOpen = false;
   }
 }

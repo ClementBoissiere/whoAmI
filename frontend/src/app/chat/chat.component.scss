@@ -10,6 +10,13 @@
     max-height: 80vh;
 }
 
+/* Responsive Design */
+@media (max-width: 768px) {
+    .chat {
+        padding-left: 0;
+    }
+}
+
 *::-webkit-scrollbar {
     background-color: #028391;
     width: 10px;

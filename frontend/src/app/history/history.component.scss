@@ -110,3 +110,61 @@
 .answers-list::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
 }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .history-container {
+        margin-top: 1rem;
+        padding: 0.75rem;
+    }
+    
+    .history-title {
+        font-size: 1.3rem;
+    }
+    
+    .history-table {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .column-header {
+        font-size: 1rem;
+        padding: 0.6rem;
+    }
+    
+    .answers-list {
+        max-height: 150px;
+    }
+    
+    .answer-item {
+        font-size: 0.8rem;
+        padding: 0.4rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .history-container {
+        padding: 0.5rem;
+    }
+    
+    .history-title {
+        font-size: 1.1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .column-header {
+        font-size: 0.9rem;
+        padding: 0.5rem;
+    }
+    
+    .answers-list {
+        max-height: 120px;
+        padding: 0.3rem;
+    }
+    
+    .answer-item {
+        font-size: 0.75rem;
+        padding: 0.3rem;
+        margin-bottom: 0.3rem;
+    }
+}

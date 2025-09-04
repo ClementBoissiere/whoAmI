@@ -111,3 +111,28 @@
 }
 
 /* Removed unused animations */
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .you, .game {
+    font-size: clamp(1.5rem, 6vw, 3rem);
+  }
+  
+  .win, .over {
+    font-size: clamp(2rem, 8vw, 4rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .you, .game {
+    font-size: clamp(1.2rem, 5vw, 2.5rem);
+  }
+  
+  .win, .over {
+    font-size: clamp(1.8rem, 7vw, 3.5rem);
+  }
+  
+  .main-text {
+    margin-bottom: 0.5rem;
+  }
+}

@@ -16,6 +16,8 @@
     border: 1px solid hsl(26, 97%, 66%);
     width: 80%;
     left: 4rem;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .input-container {
@@ -99,6 +101,8 @@ img {
     left: 4rem;
     position: relative;
     border: 1px solid #e57373;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 input:focus-visible {
@@ -110,14 +114,52 @@ input:focus-visible {
     width: 80%;
     left: 4rem;
     position: relative;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.life-bar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
 }
 
 .life-bar-label {
     font-size: 16px;
     font-weight: bold;
     color: #333;
-    margin-bottom: 0.5rem;
+    flex: 1;
     text-align: center;
+}
+
+.history-btn {
+    background-color: #FEAE6F;
+    border: 2px solid #e9ecef;
+    border-radius: 50%;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.history-btn:hover {
+    background-color: #fd9a47;
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.history-btn:active {
+    transform: scale(0.95);
+}
+
+.mobile-only {
+    display: none;
 }
 
 .life-bar {
@@ -166,9 +208,74 @@ input:focus-visible {
     border: 1px solid #ffb74d;
     font-weight: bold;
     animation: pulse 1s infinite;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.7; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .chatBox,
+    .life-bar-container,
+    .error-message,
+    .cooldown-message {
+        width: 95%;
+        left: 0;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    .inputText {
+        font-size: 18px;
+    }
+    
+    .life-bar-label {
+        font-size: 14px;
+    }
+    
+    .char-counter {
+        font-size: 11px;
+    }
+    
+    .mobile-only {
+        display: flex;
+    }
+    
+    .history-btn {
+        width: 2rem;
+        height: 2rem;
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .chatBox,
+    .life-bar-container,
+    .error-message,
+    .cooldown-message {
+        width: 100%;
+        left: 0;
+    }
+    
+    .inputText {
+        font-size: 16px;
+        padding: 0.75rem 0;
+    }
+    
+    .life-bar-label {
+        font-size: 13px;
+    }
+    
+    .submit {
+        margin: 8px;
+    }
+    
+    img {
+        width: 20px;
+        height: 20px;
+    }
 }
