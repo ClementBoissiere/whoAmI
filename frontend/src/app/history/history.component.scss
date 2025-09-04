@@ -1,6 +1,6 @@
 .history-container {
     margin-top: 2rem;
-    background-color: #f8f9fa;
+    background-color: #F6DCAC;
     border-radius: 12px;
     padding: 1rem;
     border: 2px solid #e9ecef;
@@ -17,13 +17,14 @@
 }
 
 .history-table {
+    background-color: #F6DCAC;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
 }
 
 .history-column {
-    background-color: white;
+    background-color: #FEAE6F;
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);

@@ -2,7 +2,7 @@
 <div class="life-bar-container">
     <div class="life-bar-label">Questions restantes: {{ gameSession.questionsRemaining }}/20</div>
     <div class="life-bar">
-        <div class="life-bar-fill" 
+        <div class="life-bar-fill"
              [style.width.%]="(gameSession.questionsRemaining / 20) * 100"
              [style.background]="lifeBarColor"></div>
     </div>
@@ -10,7 +10,7 @@
 
 <!-- Cooldown indicator -->
 <div *ngIf="cooldownRemaining > 0" class="cooldown-message">
-    ⏳ Attendez {{ cooldownRemaining }} seconde(s)...
+    ⏳ I'm thinking {{ cooldownRemaining }} second(s)...
 </div>
 
 <form [formGroup]="chatForm" class="chatBox">
