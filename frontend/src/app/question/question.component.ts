@@ -133,6 +133,22 @@ export class QuestionComponent implements OnInit, OnDestroy {
     return this.chatForm.get('chatQuestion')?.hasError('maxlength') || false;
   }
 
+  get cooldownMessage(): string {
+    const messages = [
+      "🤔 Take your time to think...",
+      "🕵️ Let me process that clue...",
+      "🤖 Analyzing your strategy...",
+      "💭 Give me a moment to reflect...",
+      "🎯 Preparing my next hint...",
+      "⚡ Recharging detective skills...",
+      "🔍 Examining the evidence..."
+    ];
+    
+    // Use cooldownRemaining to get a consistent message during the same cooldown
+    const index = this.cooldownRemaining % messages.length;
+    return messages[index];
+  }
+
   get lifeBarColor(): string {
     const remaining = this.gameSession.questionsRemaining;
     if (remaining <= 5) {

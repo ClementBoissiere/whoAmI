@@ -10,7 +10,7 @@
 
 <!-- Cooldown indicator -->
 <div *ngIf="cooldownRemaining > 0" class="cooldown-message">
-    ⏳ I'm thinking {{ cooldownRemaining }} second(s)...
+    {{ cooldownMessage }} {{ cooldownRemaining }}s
 </div>
 
 <form [formGroup]="chatForm" class="chatBox">
