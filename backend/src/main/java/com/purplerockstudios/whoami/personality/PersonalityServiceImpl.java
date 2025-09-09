@@ -68,7 +68,7 @@ public class PersonalityServiceImpl implements PersonalityService {
 	@Override
 	public String getLastPersonality() {
 		if (this.oldPersonalities.isEmpty()) {
-			return "Jhonny Haliday";
+			return "Johnny Hallyday";
 		}
 		return this.oldPersonalities.getLast();
 	}

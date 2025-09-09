@@ -16,8 +16,8 @@ import { ResponseService } from './response/response.service';
   styleUrl: './app.component.scss'
 })
 export class AppComponent implements OnInit {
-  title = 'whoami';
-  
+  title = 'guessidentity';
+
   gameEndState = {
     isWin: false,
     isVisible: false
@@ -37,12 +37,12 @@ export class AppComponent implements OnInit {
     // Listen for localStorage changes to detect game over AND daily resets
     this.localStorageService.newData.subscribe((messages) => {
       const session = this.localStorageService.getGameSession();
-      
+
       // Hide game end screen if messages were cleared (daily reset)
       if (messages.length === 0) {
         this.gameEndState.isVisible = false;
       }
-      
+
       // Show game over if session ended
       if (session.gameOver && !session.gameWon) {
         this.showGameEndAnimation(false);

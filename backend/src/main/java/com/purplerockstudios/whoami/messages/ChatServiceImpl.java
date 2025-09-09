@@ -6,7 +6,6 @@ import dev.langchain4j.model.input.PromptTemplate;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -15,10 +14,9 @@ public class ChatServiceImpl implements ChatService {
 
 	private final ChatModel chatModel;
 	private final PersonalityService personalityService;
-	private final List<String> conversationHistory = new ArrayList<>();
 
 	@Override
-	public String answer(String message) {
+	public String answer(String message, List<String> conversationHistory) {
 		// Ajouter la question à l'historique
 		conversationHistory.add("USER: " + message);
 		

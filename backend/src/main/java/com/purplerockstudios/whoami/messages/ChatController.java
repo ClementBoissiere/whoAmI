@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.annotation.SessionScope;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static com.purplerockstudios.whoami.messages.ChatResponse.stringToChatResponse;
 
 @RestController
@@ -17,6 +20,7 @@ public class ChatController {
 
 	private final ChatService chatService;
 	private final PersonalityService personalityService;
+	private final List<String> conversationHistory = new ArrayList<>();
 
 	@PostMapping(value = "/test", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
 	ChatResponse getMessage(@RequestBody ChatRequest message) {
@@ -24,7 +28,7 @@ public class ChatController {
 			return stringToChatResponse("WIN");
 		}
 
-		return stringToChatResponse(chatService.answer(message.getMessage()));
+		return stringToChatResponse(chatService.answer(message.getMessage(), conversationHistory));
 	}
 
 	private boolean checkWin(String message) {
